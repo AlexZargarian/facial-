@@ -1,4 +1,3 @@
-
 const mysql = require('mysql2');
 const axios = require('axios');
 const bcrypt = require('bcrypt');
@@ -90,28 +89,33 @@ app.get('/getClasses', (req, res) => {
 });
 
 
-
 app.post('/start-recognition', (req, res) => {
-    const pythonProcess = spawn('python', ['./smart_attendance.py'], { stdio: 'inherit' });
+    const pythonProcess = spawn('python', ['./smart_attendance.py'], { stdio: ['pipe', 'pipe', 'pipe'] });
+
+    let dataOutput = '';
+    let errorOutput = '';
 
     pythonProcess.stdout.on('data', (data) => {
+        dataOutput += data.toString();
         console.log(`stdout: ${data.toString()}`);
     });
 
     pythonProcess.stderr.on('data', (data) => {
+        errorOutput += data.toString();
         console.error(`stderr: ${data.toString()}`);
     });
 
     pythonProcess.on('close', (code) => {
         if (code !== 0) {
             console.error(`Python script exited with code ${code}`);
-            return res.status(500).json({ message: "Facial recognition script failed" });
+            console.error(`Python script stderr: ${errorOutput}`);
+            return res.status(500).json({ message: "Facial recognition script failed", error: errorOutput });
         }
-        res.status(200).json({ message: "Facial recognition script executed successfully" });
+        res.status(200).json({ message: "Facial recognition script executed successfully", output: dataOutput });
     });
 });
+
 
 app.listen(8081, () => {
     console.log("Server started on port 8081");
 });
-
